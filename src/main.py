@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-
+from sklearn.model_selection import StratifiedKFold, cross_val_score
 
 # Data split parameters
 SEED_STATE = 23
@@ -144,3 +144,30 @@ with torch.no_grad():
 accuracy_torch = accuracy_score(y_test, y_pred_torch)
 
 print("Accuracy PyTorch:", accuracy_torch)
+
+
+# Task 4 – Cross-validation
+
+# Define stratified 5-fold cross-validation
+skf = StratifiedKFold(
+    n_splits=5,
+    shuffle=True,
+    random_state=SEED_STATE
+)
+
+# Evaluate the scikit-learn model
+scores_sklearn = cross_val_score(
+    model,
+    X_train,
+    y_train,
+    cv=skf,
+    scoring="accuracy"
+)
+
+# Calculate mean accuracy and standard deviation
+mean_sklearn = np.mean(scores_sklearn)
+std_sklearn = np.std(scores_sklearn)
+
+print("Accuracy for each fold:", scores_sklearn)
+print(f"Mean accuracy: {mean_sklearn:.4f}")
+print(f"Standard deviation: {std_sklearn:.4f}")
