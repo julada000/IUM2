@@ -4,6 +4,12 @@ import pandas as pd
 from sklearn.datasets import load_breast_cancer
 from sklearn.model_selection import train_test_split
 
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+
+
 # Data split parameters
 SEED_STATE = 23
 TEST_SIZE = 0.2
@@ -28,3 +34,23 @@ X_train, X_test, y_train, y_test = train_test_split(
 
 print("Training set:", X_train.shape)
 print("Test set:", X_test.shape)
+
+
+# Task 2 – Model scikit-learn
+
+# Create a pipeline with scaling and Random Forest
+model = Pipeline([
+    ("scaler", StandardScaler()),
+    ("classifier", RandomForestClassifier(random_state=SEED_STATE))
+])
+
+# Train the model
+model.fit(X_train, y_train)
+
+# Predict labels for the test set
+y_pred = model.predict(X_test)
+
+# Calculate model accuracy
+accuracy = accuracy_score(y_test, y_pred)
+
+print("Accuracy:", accuracy)
