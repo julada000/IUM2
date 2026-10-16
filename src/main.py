@@ -171,3 +171,99 @@ std_sklearn = np.std(scores_sklearn)
 print("Accuracy for each fold:", scores_sklearn)
 print(f"Mean accuracy: {mean_sklearn:.4f}")
 print(f"Standard deviation: {std_sklearn:.4f}")
+
+
+# Task 5 – PyTorch cross-validation
+
+# Store accuracy scores for each fold
+scores_torch = []
+
+# Perform stratified 5-fold cross-validation
+for fold, (train_idx, val_idx) in enumerate(
+    skf.split(X_train, y_train), start=1
+):
+    print(f"\nFold {fold}/5")
+
+    # Split data into training and validation sets
+    X_fold_train = X_train.iloc[train_idx]
+    X_fold_val = X_train.iloc[val_idx]
+
+    y_fold_train = y_train[train_idx]
+    y_fold_val = y_train[val_idx]
+
+    # Scale data for each fold
+    scaler_fold = StandardScaler()
+
+    X_fold_train_scaled = scaler_fold.fit_transform(X_fold_train)
+    X_fold_val_scaled = scaler_fold.transform(X_fold_val)
+
+    # Convert data to PyTorch tensors
+    X_fold_train_tensor = torch.tensor(
+        X_fold_train_scaled, dtype=torch.float32
+    )
+    X_fold_val_tensor = torch.tensor(
+        X_fold_val_scaled, dtype=torch.float32
+    )
+
+    y_fold_train_tensor = torch.tensor(
+        y_fold_train, dtype=torch.long
+    )
+    y_fold_val_tensor = torch.tensor(
+        y_fold_val, dtype=torch.long
+    )
+
+    # Initialize a new model for each fold
+    torch.manual_seed(SEED_STATE + fold)
+
+    model_fold = NeuralNetwork(
+        input_size=X_train.shape[1],
+        num_classes=len(np.unique(y_train))
+    )
+
+    # Define loss function and optimizer
+    criterion_fold = nn.CrossEntropyLoss()
+
+    optimizer_fold = optim.Adam(
+        model_fold.parameters(),
+        lr=0.001
+    )
+
+    # Train the model
+    model_fold.train()
+
+    for epoch in range(100):
+        optimizer_fold.zero_grad()
+
+        outputs = model_fold(X_fold_train_tensor)
+
+        loss = criterion_fold(outputs, y_fold_train_tensor)
+
+        loss.backward()
+        optimizer_fold.step()
+
+    # Evaluate the model on validation data
+    model_fold.eval()
+
+    with torch.no_grad():
+        outputs = model_fold(X_fold_val_tensor)
+        predictions = torch.argmax(outputs, dim=1)
+
+        accuracy = (
+            (predictions == y_fold_val_tensor)
+            .float()
+            .mean()
+            .item()
+        )
+
+    # Store and display fold accuracy
+    scores_torch.append(accuracy)
+
+    print(f"Accuracy fold {fold}: {accuracy:.4f}")
+
+# Calculate mean accuracy and standard deviation
+mean_torch = np.mean(scores_torch)
+std_torch = np.std(scores_torch)
+
+print("Accuracy for each fold:", scores_torch)
+print(f"Mean accuracy PyTorch: {mean_torch:.4f}")
+print(f"Standard deviation PyTorch: {std_torch:.4f}")
