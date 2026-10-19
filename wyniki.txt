@@ -1,0 +1,20 @@
+PORÓWNANIE MODELI SCIKIT-LEARN I PYTORCH
+
+Wyniki 5-krotnej walidacji krzyżowej:
+       Model  Średnia dokładność  Odch. standardowe  Precyzja  Czułość  F1-score  Czas walidacji [s]
+scikit-learn              0.9538             0.0146    0.9591   0.9684    0.9632              0.6716
+     PyTorch              0.9758             0.0146    0.9766   0.9860    0.9809              1.6861
+
+Dokładność w poszczególnych foldach:
+scikit-learn: [0.978  0.9451 0.956  0.9341 0.956 ]
+PyTorch:      [0.978 0.956 0.978 0.967 1.   ]
+
+Porównanie złożoności kodu:
+scikit-learn: mniej kodu dzięki Pipeline i cross_val_score.
+PyTorch: więcej kodu ze względu na definicję sieci i ręczną pętlę treningową.
+
+Podsumowanie:
+Model PyTorch uzyskał wyższą średnią dokładność.
+Czas walidacji scikit-learn: 0.67 s.
+Czas walidacji PyTorch: 1.69 s.
+Podane czasy obejmują walidację krzyżową, a nie wyłącznie trening modeli.

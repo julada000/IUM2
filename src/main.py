@@ -7,13 +7,21 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score
+)
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 
 from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+import time
+from pathlib import Path
 
 # Data split parameters
 SEED_STATE = 23
@@ -155,6 +163,8 @@ skf = StratifiedKFold(
     random_state=SEED_STATE
 )
 
+start_sklearn = time.perf_counter()
+
 # Evaluate the scikit-learn model
 scores_sklearn = cross_val_score(
     model,
@@ -164,19 +174,43 @@ scores_sklearn = cross_val_score(
     scoring="accuracy"
 )
 
+time_sklearn = time.perf_counter() - start_sklearn
+
 # Calculate mean accuracy and standard deviation
 mean_sklearn = np.mean(scores_sklearn)
 std_sklearn = np.std(scores_sklearn)
 
+# Calculate additional cross-validation metrics
+precision_sklearn = cross_val_score(
+    model, X_train, y_train, cv=skf, scoring="precision"
+)
+
+recall_sklearn = cross_val_score(
+    model, X_train, y_train, cv=skf, scoring="recall"
+)
+
+f1_sklearn = cross_val_score(
+    model, X_train, y_train, cv=skf, scoring="f1"
+)
+
+
 print("Accuracy for each fold:", scores_sklearn)
 print(f"Mean accuracy: {mean_sklearn:.4f}")
 print(f"Standard deviation: {std_sklearn:.4f}")
+print(f"Mean precision: {np.mean(precision_sklearn):.4f}")
+print(f"Mean recall: {np.mean(recall_sklearn):.4f}")
+print(f"Mean F1-score: {np.mean(f1_sklearn):.4f}")
 
 
 # Task 5 – PyTorch cross-validation
 
+start_torch = time.perf_counter()
+
 # Store accuracy scores for each fold
 scores_torch = []
+precision_torch = []
+recall_torch = []
+f1_torch = []
 
 # Perform stratified 5-fold cross-validation
 for fold, (train_idx, val_idx) in enumerate(
@@ -257,8 +291,27 @@ for fold, (train_idx, val_idx) in enumerate(
 
     # Store and display fold accuracy
     scores_torch.append(accuracy)
+    
+    # Calculate additional metrics for the current fold
+    y_true_fold = y_fold_val_tensor.numpy()
+    y_pred_fold = predictions.numpy()
+
+    precision_torch.append(
+        precision_score(y_true_fold, y_pred_fold, zero_division=0)
+    )
+
+    recall_torch.append(
+        recall_score(y_true_fold, y_pred_fold, zero_division=0)
+    )
+
+    f1_torch.append(
+        f1_score(y_true_fold, y_pred_fold, zero_division=0)
+    )
+
 
     print(f"Accuracy fold {fold}: {accuracy:.4f}")
+
+time_torch = time.perf_counter() - start_torch
 
 # Calculate mean accuracy and standard deviation
 mean_torch = np.mean(scores_torch)
@@ -267,3 +320,58 @@ std_torch = np.std(scores_torch)
 print("Accuracy for each fold:", scores_torch)
 print(f"Mean accuracy PyTorch: {mean_torch:.4f}")
 print(f"Standard deviation PyTorch: {std_torch:.4f}")
+
+# Calculate mean and standard deviation for additional metrics
+mean_precision_torch = np.mean(precision_torch)
+mean_recall_torch = np.mean(recall_torch)
+mean_f1_torch = np.mean(f1_torch)
+
+print(f"Mean precision PyTorch: {mean_precision_torch:.4f}")
+print(f"Mean recall PyTorch: {mean_recall_torch:.4f}")
+print(f"Mean F1-score PyTorch: {mean_f1_torch:.4f}")
+
+
+# Task 6 – Model comparison
+
+# Summarize cross-validation results
+results = pd.DataFrame({
+    "Model": ["scikit-learn", "PyTorch"],
+    "Średnia dokładność": [mean_sklearn, mean_torch],
+    "Odch. standardowe": [std_sklearn, std_torch],
+    "Precyzja": [np.mean(precision_sklearn), np.mean(precision_torch)],
+    "Czułość": [np.mean(recall_sklearn), np.mean(recall_torch)],
+    "F1-score": [np.mean(f1_sklearn), np.mean(f1_torch)],
+    "Czas walidacji [s]": [time_sklearn, time_torch]
+})
+
+# Compare models based on mean accuracy
+if mean_sklearn > mean_torch:
+    conclusion = "Model scikit-learn uzyskał wyższą średnią dokładność."
+elif mean_torch > mean_sklearn:
+    conclusion = "Model PyTorch uzyskał wyższą średnią dokładność."
+else:
+    conclusion = "Oba modele uzyskały taką samą średnią dokładność."
+
+# Prepare and save the report as a text file
+report = f"""PORÓWNANIE MODELI SCIKIT-LEARN I PYTORCH
+
+Wyniki 5-krotnej walidacji krzyżowej:
+{results.to_string(index=False, float_format=lambda x: f'{x:.4f}')}
+
+Dokładność w poszczególnych foldach:
+scikit-learn: {np.round(scores_sklearn, 4)}
+PyTorch:      {np.round(scores_torch, 4)}
+
+Porównanie złożoności kodu:
+scikit-learn: mniej kodu dzięki Pipeline i cross_val_score.
+PyTorch: więcej kodu ze względu na definicję sieci i ręczną pętlę treningową.
+
+Podsumowanie:
+{conclusion}
+Czas walidacji scikit-learn: {time_sklearn:.2f} s.
+Czas walidacji PyTorch: {time_torch:.2f} s.
+Podane czasy obejmują walidację krzyżową, a nie wyłącznie trening modeli.
+"""
+
+Path("wyniki.txt").write_text(report, encoding="utf-8")
+print(report)
